@@ -5,14 +5,14 @@ module.exports = {
   development: {
     client: 'postgresql',
     connection: {
-      database: 'quikker-cat',
+      database: 'diamond',
     }
   },
   
   staging: {
     client: 'postgresql',
     connection: {
-      database: 'quikker-cat',
+      database: 'diamond',
       user:     'username',
       password: 'password'
     },
@@ -28,7 +28,7 @@ module.exports = {
   production: {
     client: 'postgresql',
     connection: {
-      database: 'quikker-cat',
+      database: 'diamond',
       user:     'username',
       password: 'password'
     },

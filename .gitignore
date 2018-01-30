@@ -10,6 +10,7 @@ config/test.json
 # Logs
 logs
 *.log
+logfile
 
 # Runtime data
 pids
@@ -35,3 +36,4 @@ dist/
 # see https://npmjs.org/doc/faq.html#Should-I-check-my-node_modules-folder-into-git
 node_modules/
 bower_components/
+Icon
