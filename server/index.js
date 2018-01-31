@@ -11,94 +11,64 @@ app.use((req, res, next) => {
 });
 app.listen(process.env.PORT || 9200);
 
-app.get('/get/:table/:query', async(req, res, next) => {
-  // query 'length': get the length of the table
-  // query 'all': get all the data in the table
+app.get('/add/:user/:quantity', (req, res, next) => { // the only synchronous route
+  // add :quantity passengers/drivers to the available_passengers queue
   const t0 = new Date().getTime()
-  try {
-    const awaiting = await dbHelpers.get(req.params.table, req.params.query);
-    res.status(200).json({
-      message: `Successful GET -> /get/${req.params.table}/${req.params.query}`,
-      time: `${(new Date().getTime() - t0) / 1000}s`,
-      output: awaiting
-    });
-  } catch (e) {
-    next(e);
-  }
+  const output = dbHelpers.addUsers(req.params.user, req.params.quantity);
+  res.status(200).json({
+    message: `Successful GET -> /add/${req.params.user}/${req.params.quantity}`,
+    time: `${(new Date().getTime() - t0) / 1000}s`,
+    output: output
+  });
 });
-app.get('/post/:table', async(req, res, next) => {
+app.get('/matchtrips/:quantity', async(req, res, next) => {
+  // match :quantity
   const t0 = new Date().getTime()
-  try {
-    const awaiting = await dbHelpers.post(req.params.table);
-    res.status(200).json({
-      message: `Successful POST -> /post/${req.params.table}`,
-      time: `${(new Date().getTime() - t0) / 1000}s`,
-      output: awaiting
-    });
-  } catch (e) {
-    next(e);
-  }
+  const output = await dbHelpers.matchtrips(req.params.quantity);
+  res.status(200).json({
+    message: `Successful GET -> /matchtrips/${req.params.quantity}`,
+    time: `${(new Date().getTime() - t0) / 1000}s`,
+    output: output
+  });
 });
-app.get('/delete/:table', async(req, res, next) => {
-  const t0 = new Date().getTime();
-  try {
-    const awaiting = await dbHelpers.delete_(req.params.table);
-    res.status(200).json({
-      message: `Successful DELETE -> /delete/${req.params.table}`,
-      time: `${(new Date().getTime() - t0) / 1000}s`,
-      output: awaiting
-    });
-  } catch (e) {
-    next(e);
-  }
+app.get('/see/:query', async(req, res, next) => {
+  // view the data structures :query = 'all', 'one', 'length'
+  const t0 = new Date().getTime()
+  const output = await dbHelpers.see(req.params.query);
+  res.status(200).json({
+    message: `Successful GET -> /see/${req.params.query}}`,
+    time: `${(new Date().getTime() - t0) / 1000}s`,
+    output: output
+  });
 });
-app.post('/post/onemillion/:table', async(req, res, next) => {
-  const t0 = new Date().getTime();
-  try {
-    for (let i = 0; i < 668; i++) {
-      await dbHelpers.post(req.params.table);
-      console.log(`In progress (${(i + 1) * 15000} / 10000000) POST -> /post/onemillion/${req.params.table}`);
-      if (i === 667) res.status(201).json({
-        message: `Successful POST -> /post/onemillion/${req.params.table}`,
-        time: `${(new Date().getTime() - t0) / 1000}s`,
-        output: awaiting
-      });
-    }
-  } catch (e) {
-    next(e);
-  }
-});
-app.get('/match', async(req, res, next) => {
-  const t0 = new Date().getTime();
-  try {
-    const awaiting = await dbHelpers.match();
-    res.status(200).json({
-      message: `Successful POST -> /match`,
-      time: `${(new Date().getTime() - t0) / 1000}s`,
-      output: awaiting
-    });
-  } catch (e) {
-    next(e);
-  }
+app.get('/wipe', async(req, res, next) => {
+  // wipe all data structures
+  const t0 = new Date().getTime()
+  const output = await dbHelpers.wipe();
+  res.status(200).json({
+    message: `Successful GET -> /wipe`,
+    time: `${(new Date().getTime() - t0) / 1000}s`,
+    output: output
+  });
 });
 app.get('/simulate', async(req, res, next) => {
   // real scenario: all 3 below functions happening at the same time.
-  // passengers constantly getting added
-  // drivers constantly getting added
-  // every few seconds, matching is performed
+  // 1. passengers constantly getting added
+  // 2. drivers constantly getting added
+  // 3. matching is performed repeatedly in the background
   const t0 = new Date().getTime();
   try {
-    const passengerAddRepeat = 3;
-    const driverAddRepeat = 3;
-    const matchRepeat = 5;
+    const passengerAddRepeat = 5;
+    const driverAddRepeat = 5;
+    const matchRepeat = 30;
     for (let i = 0; i < passengerAddRepeat; i++) {
-      dbHelpers.post('available_passengers');
+      await dbHelpers.addUsers('passengers', 20000);
     }
     for (let i = 0; i < driverAddRepeat; i++) {
-      dbHelpers.post('available_drivers');
+      await dbHelpers.addUsers('drivers', 20000);
     }
     for (let i = 0; i < matchRepeat; i++) {
-      await dbHelpers.match();
+      await dbHelpers.matchtrips(5000);
     }
     res.status(200).json({
       message: `Successful get -> /simulate`,
