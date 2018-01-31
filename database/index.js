@@ -10,7 +10,7 @@ const get = async(table, query) => {
 const post = async(table, arrayOfJSON) => {
   // 15000 appears to be the upper limit to how many POST knex-psql can make in once insert call IN THIS SPECIFIC CASE. 
   // using smaller number now for testing
-  const limit = 100;
+  const limit = 10000;
   if (!arrayOfJSON) arrayOfJSON = generateFakeData(table, limit); // no arrayOfJSON = generate fake data
   if (arrayOfJSON.length > limit) {
     console.log(`Error! arrayOfJSON.length must be <= ${limit}.`);
@@ -21,22 +21,22 @@ const post = async(table, arrayOfJSON) => {
 };
 const delete_ = async(table) => {
   console.log(`table ${table}: deleting all data`);
-  return await knex(table).delete();
+  if (table !== 'all') return await knex(table).delete();
+  await knex('available_passengers').delete();
+  await knex('available_drivers').delete();
+  return await knex('trips').delete();
 };
 const match = async() => {
   // match available users with available drivers, take them off those tables, and add to trips table
   // to start off, this will only match with exact coordinates match
-  const limit = 100; // for testing, using smaller number
+  const limit = 5000; // for testing, using smaller number
   const trips = [];
-  // 1. select top few rows from available_passengers
+  // 1. select <limit> passengers who have been waiting longest time
   let available_passengers = await knex.select().from('available_passengers').limit(limit);
-  // 2. sort based on coordinates (need refactoring for optimizing later, and maybe quicksort)
-  available_passengers = available_passengers.sort((a, b) => a.coordinates - b.coordinates);
-  // 3. for each available passenger, query drivers, matching user to driver in default FIFO order (queue)
+  // 2. for each available passenger, query drivers, matching user to driver in default FIFO order (queue)
   for (let i = 0; i < available_passengers.length; i++) {
     const driver = await knex.select().where('coordinates', available_passengers[i].coordinates).from('available_drivers').limit(1);
-    if (!driver.length) continue;
-    console.log('Found a driver: ', driver[0].name);
+    if (!driver.length) continue; // sometimes no driver found. that's ok now, but later, may need to find closest driver
     trips.push({
       passenger: available_passengers[i].uid,
       passenger_name: available_passengers[i].name,
@@ -48,15 +48,12 @@ const match = async() => {
       status: 'matched',
       destination: available_passengers[i].destination,
     });
-    await knex('available_drivers').where('uid', driver[0].uid).delete();
+    await knex('available_drivers').where('uid', driver[0].uid).delete(); // remove driver so he don't get matched again
   }
-  // 4. bulk insert entire array into trips
+  // 3. bulk insert entire array into trips
   console.log(`table trips: posting ${trips.length} items`);
-  console.log(trips.map(trip => trip.passenger));
-  // const test = await knex.select().whereIn('uid', trips.map(trip => trip.passenger)).from('available_passengers');
-  // console.log('test', test);
-  await knex('available_passengers').whereIn('uid', trips.map(trip => trip.passenger)).delete();
-  return await knex.insert(trips).into('trips');
+  await knex('available_passengers').whereIn('uid', trips.map(trip => trip.passenger)).delete(); // remove all matched passengers
+  return await knex.insert(trips).into('trips'); // bulk insert trips
 }
 
 const generateFakeData = (table, rows) => {
