@@ -11,6 +11,7 @@ app.use((req, res, next) => {
 });
 app.listen(process.env.PORT || 9200);
 
+// TESTING ROUTES
 app.get('/add/:user/:quantity', (req, res, next) => { // the only synchronous route
   // add :quantity passengers/drivers to the available_passengers queue
   const t0 = new Date().getTime()
@@ -71,11 +72,22 @@ app.get('/simulate', async(req, res, next) => {
       await dbHelpers.matchtrips(5000);
     }
     res.status(200).json({
-      message: `Successful get -> /simulate`,
+      message: `Successful GET -> /simulate`,
       time: `${(new Date().getTime() - t0) / 1000}s`,
       output: null
     });
   } catch (e) {
     next(e);
   }
+});
+app.get('/million', async(req, res, next) => {
+  // add one million trips to trips database
+  const t0 = new Date().getTime()
+  for (let i = 0; i < 200; i++) {
+    await dbHelpers.addTenMillionTrips(i);
+  }
+  res.status(200).json({
+    message: `Successful GET -> /million`,
+    time: `${(new Date().getTime() - t0) / 1000}s`,
+  });
 });

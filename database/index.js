@@ -7,6 +7,7 @@ let available_passengers = new dataStructures.Queue();
 //let available_drivers = Array(1000).fill(Array(1000).fill(new dataStructures.Queue()));
 let available_drivers = Array(1000).fill(Array(1000).fill(null));
 
+// TESTING FUNCTIONS
 const addUsers = (user, quantity) => {
   // add <quantity> passengers/drivers to available_passengers/available_drivers
   if (user === 'passengers') {
@@ -46,7 +47,7 @@ const matchtrips = async(quantity) => {
       driver_origin_x: driver.x,
       driver_origin_y: driver.y,
       price: ~~(Math.random() * 50),
-      status: 'picking-up',
+      status: 'picking-up', // available, picking-up, in-transit 
       destination_x: passenger.destination_x,
       destination_y: passenger.destination_y,
     });
@@ -55,20 +56,15 @@ const matchtrips = async(quantity) => {
 };
 const see = async(query) => {
   // see the current state of the data structures
-  let dataStructures = [
-    available_passengers,
-    available_drivers,
-    await knex.select().from('trips'),
-  ];
   let ret = [null, null, null];
   if (query === 'length') {
-    ret[0] = dataStructures[0].size();
+    ret[0] = available_passengers.size();
     ret[1] = 'chuck norris';
-    ret[2] = dataStructures[2].length;
+    ret[2] = (await knex.select('passenger_uid').from('trips')).length;
   } else if (query === 'one') {
-    ret[0] = dataStructures[0].first() || 'nothing here';
-    ret[1] = dataStructures[1][0].slice(0, 5);
-    ret[2] = dataStructures[2][0] || 'nothing here';
+    ret[0] = available_passengers.first() || 'nothing here';
+    ret[1] = available_drivers[0].slice(0, 5);
+    ret[2] = await knex.select().from('trips').limit(1) || 'nothing here';
   }
   return { 'available_passengers': ret[0], 'available_drivers': ret[1], 'trips': ret[2] };
 }
@@ -98,6 +94,27 @@ const generateFakeData = (user) => {
       car: faker.commerce.productName(),
     };
 };
+const addTenMillionTrips = async(iteration) => {
+  console.log(`Adding ${(iteration + 1) * 5000} / 10000000 trips`);
+  const trips = [];
+  for (let i = 0; i < 5000; i++) {
+    trips.push({
+      passenger_uid: uid++,
+      passenger_name: faker.name.findName(),
+      passenger_origin_x: ~~(Math.random() * 1000),
+      passenger_origin_y: ~~(Math.random() * 1000),
+      driver_uid: uid++,
+      driver_name: faker.name.findName(),
+      driver_origin_x: ~~(Math.random() * 1000),
+      driver_origin_y: ~~(Math.random() * 1000),
+      price: ~~(Math.random() * 50),
+      status: 'picking-up', // available, picking-up, in-transit 
+      destination_x: ~~(Math.random() * 1000),
+      destination_y: ~~(Math.random() * 1000),
+    });
+  }
+  await knex.insert(trips).into('trips');
+};
 
 
 module.exports = {
@@ -105,4 +122,5 @@ module.exports = {
   matchtrips,
   see,
   wipe,
+  addTenMillionTrips,
 };
