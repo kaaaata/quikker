@@ -3,14 +3,14 @@ const faker = require('faker');
 const _ = require('lodash');
 const dataStructures = require('./dataStructures');
 
-
 let uid = 0; // ghetto way to auto-increment UID for passengers and drivers
-let available_passengers = new dataStructures.Queue();
-let available_drivers = Array(1000).fill(Array(1000).fill(null));
+let available_passengers = new dataStructures.Queue(); // simple queue
+let available_drivers = Array(1000).fill(Array(1000).fill(null)); // 1000x1000 array eventually filled with queues
 
-// TESTING FUNCTIONS
+// PRODUCTION FUNCTIONS
 const addUser = (user, data) => {
-  // add passengers/drivers to available_passengers/available_drivers
+  // Inputs: user like 'passengers' or 'drivers', data like [ {}, ..., {} ];
+  // Outputs: inserts data into appropriate data structures
   if (user === 'passengers') {
     for (let i = 0; i < data.length; i++) {
       available_passengers.enqueue(data[i]);
@@ -27,8 +27,8 @@ const addUser = (user, data) => {
   return `Just added ${data.length} available ${user}.`;
 };
 const updateTrips = async(trips) => {
-  // update status of many trips 'picking-up', 'in-progress', 'completed', 'cancelled'
-  // input is like [ { uid: <integer>, status: <string> }, ... ];
+  // Input: trips like [ { uid: <integer>, status: <string> }, ... ]
+  // Outputs: update status of many trips 'picking-up', 'in-progress', 'completed', 'cancelled'
   console.log(`Trying to update ${trips.length} trips, first one: ${JSON.stringify(trips[0])}`);
   for (let i = 0; i < trips.length; i++) {
     await knex('trips').where('trip_uid', trips[i].trip_uid).update({ status: trips[i].status });
@@ -38,7 +38,7 @@ const updateTrips = async(trips) => {
   await knex('historical_trips').insert(tripsCompletedOrCancelled);
 };
 const matchTrips = async() => {
-  // create 5000 matches to trips database
+  // Outputs: create 5000 matches to trips database
   const trips = [];
   for (let i = 0; i < 5000; i++) {
     // no available passengers? end immediately
@@ -52,32 +52,29 @@ const matchTrips = async() => {
     if (available_drivers[passenger.y][passenger.x] && available_drivers[passenger.y][passenger.x].size()) {
       driver = available_drivers[passenger.y][passenger.x].dequeue();
     } else {
-    // no drivers found in exact coordinates? go to next nearest driver. (basic functionality, not optimized)
-      let radius = 1;
-      let expansion = ['init'];
-      while (expansion.length) {
+      // no drivers found in exact coordinates? go to next nearest driver. (basic functionality, not optimized)
+      let radius = 1; // radius for search to expand outwards from passenger coords
+      let expansion = ['init']; // array of all coordinates on radius 'circumference'
+      while (expansion.length) { // while there are still coordinates to explore i.e. not off the 1000x1000 grid
         expansion = [];
-        
-        for (j = passenger.x - radius; j <= passenger.x + radius; j++) {
+        for (j = passenger.x - radius; j <= passenger.x + radius; j++) { // add coordinates on the horizontals
           expansion.push({ y: passenger.y - radius, x: j });
           expansion.push({ y: passenger.y + radius, x: j });
         }
-        for (j = passenger.y - radius; j <= passenger.y + radius; j++) {
+        for (j = passenger.y - radius; j <= passenger.y + radius; j++) { // add coordinates on the verticals
           expansion.push({ y: j, x: passenger.x - radius });
           expansion.push({ y: j, x: passenger.x + radius });
         }
-        console.log(expansion);
-        expansion = _.uniq(expansion.map(item => JSON.stringify(item))).map(item => JSON.parse(item));
-        console.log('expansion filtered', expansion);
+        expansion = _.uniq(expansion.map(item => JSON.stringify(item))).map(item => JSON.parse(item)); // no dupes
         for (let j = 0; j < expansion.length; j++) { // expansion[i] like { y: <number>, x: <number> }
           if (available_drivers[expansion[j].y][expansion[j].x] && available_drivers[expansion[j].y][expansion[j].x].size()) {
-            console.log('external match found at radius ', radius);
+            // driver found in expanded radius search!
             driver = available_drivers[expansion[j].y][expansion[j].x].dequeue();
             j = expansion.length; // break j
             expansion = []; // break while
           }
         }
-        radius++; // no match found? expand search radius
+        radius++; // no match found? expand search radius. eventually while loop will break due to expansion = []
       }
     }
     if (driver) {
@@ -103,21 +100,24 @@ const matchTrips = async() => {
   return trips;
 };
 const see = async(query) => {
-  // see the current state of the data structures
+  // see the current state of the data structures (one/length)
   let ret = [null, null, null, null];
   if (query === 'length') {
-    ret[0] = available_passengers.size();
-    ret[1] = 'chuck norris';
-    ret[2] = await knex('trips').count('uid');
-    ret[3] = await knex('historical_trips').count('uid');
+    return {
+      'available_passengers': available_passengers.size(),
+      'available_drivers': 'in development',
+      'trips': await knex('trips').count('uid'),
+      'historical_trips': await knex('historical_trips').count('uid'),
+    }
   } else if (query === 'one') {
-    ret[0] = available_passengers.first() || 'nothing here';
-    ret[1] = available_drivers[0].slice(0, 5);
-    ret[2] = await knex.select().from('trips').limit(1) || 'nothing here';
-    ret[3] = await knex.select().from('historical_trips').limit(1) || 'nothing here';
+    return {
+      'available_passengers': available_passengers.first() || 'nothing here',
+      'available_drivers': available_drivers[0].slice(0, 5),
+      'trips': await knex.select().from('trips').limit(1) || 'nothing here',
+      'historical_trips': await knex.select().from('historical_trips').limit(1) || 'nothing here',
+    }
   }
-  return { 'available_passengers': ret[0], 'available_drivers': ret[1], 'trips': ret[2], 'historical_trips': ret[3] };
-}
+};
 const wipeQueues = () => {
   // reset all non-persistent data structures
   available_passengers = new dataStructures.Queue();
@@ -132,13 +132,17 @@ const addOneMillionTrips = async(iteration) => {
 const addFiveThousandTrips = async() => {
   const trips = [];
   for (let i = 0; i < 5000; i++) {
+    const passenger_uid = uid;
+    const driver_uid = uid;
+    const trip_uid = `${uid}-${uid}`;
+    uid++;
     trips.push({
-      trip_uid: uid++,
-      passenger_uid: uid++,
+      trip_uid: trip_uid,
+      passenger_uid: passenger_uid,
       passenger_name: faker.name.findName(),
       passenger_origin_x: ~~(Math.random() * 1000),
       passenger_origin_y: ~~(Math.random() * 1000),
-      driver_uid: uid++,
+      driver_uid: driver_uid,
       driver_name: faker.name.findName(),
       driver_origin_x: ~~(Math.random() * 1000),
       driver_origin_y: ~~(Math.random() * 1000),

@@ -4,19 +4,20 @@ class Queue {
     this.offset = 0;
   }
 
-  enqueue(x) {
+  enqueue(x) { // add to end
     this.queue.push(x);
   }
-  dequeue() {
+  dequeue() { // remove from beginning
     return this.size() > 0 ? this.queue[this.offset++] : undefined;
   }
-  first() {
+  first() { // get from beginning without removing
     return this.size() > 0 ? this.queue[this.offset] : undefined;
   }
-  size() {
+  size() { // equivalent of array.prototype.length
     return this.queue.length - this.offset;
   }
 };
+
 
 module.exports = {};
 module.exports.Queue = Queue;
