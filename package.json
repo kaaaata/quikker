@@ -3,10 +3,12 @@
     "start": "nodemon --inspect server/index.js"
   },
   "dependencies": {
+    "axios": "^0.17.1",
     "body-parser": "^1.18.2",
     "express": "^4.16.2",
     "faker": "^4.1.0",
     "knex": "^0.14.2",
+    "lodash": "^4.17.5",
     "nodemon": "^1.14.11",
     "pg": "^7.4.1"
   }

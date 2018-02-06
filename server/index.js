@@ -5,33 +5,44 @@ const dbHelpers = require('../database/index');
 const app = express();
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
-app.use((req, res, next) => { 
-  console.log(`server see ${req.method} to ${req.path} with body ${JSON.stringify(req.body)}`);
-  next();
-});
 app.listen(process.env.PORT || 9200);
 
-// TESTING ROUTES
-app.get('/add/:user/:quantity', (req, res, next) => { // the only synchronous route
-  // add :quantity passengers/drivers to the available_passengers queue
-  const t0 = new Date().getTime()
-  const output = dbHelpers.addUsers(req.params.user, req.params.quantity);
-  res.status(200).json({
-    message: `Successful GET -> /add/${req.params.user}/${req.params.quantity}`,
+
+// PRODUCTION ROUTES
+app.post('/add/:user', (req, res, next) => {
+  // add :drivers/:passengers
+  // req.body is an array of objects representing passenger data
+  const t0 = new Date().getTime();
+  const output = dbHelpers.addUser(req.params.user, req.body);
+  res.status(201).json({
+    message: `Successful POST -> /add/${req.params.user}`,
     time: `${(new Date().getTime() - t0) / 1000}s`,
     output: output
   });
 });
-app.get('/matchtrips/:quantity', async(req, res, next) => {
-  // match :quantity
-  const t0 = new Date().getTime()
-  const output = await dbHelpers.matchtrips(req.params.quantity);
-  res.status(200).json({
-    message: `Successful GET -> /matchtrips/${req.params.quantity}`,
+app.post('/updatetrips', (req, res, next) => {
+  // update status of many trips 'picking-up', 'in-progress', 'completed', 'cancelled'
+  // req.body is like [ { uid: <integer>, status: <string> }, ... ];
+  const t0 = new Date().getTime();
+  const output = dbHelpers.updateTrips(req.body);
+  res.status(201).json({
+    message: 'Successful POST -> /updatetrips',
     time: `${(new Date().getTime() - t0) / 1000}s`,
     output: output
   });
 });
+app.get('/matchtrips', async(req, res, next) => {
+  // match trips 5000
+  const t0 = new Date().getTime()
+  const output = await dbHelpers.matchTrips();
+  res.status(200).json({
+    message: `Successful GET -> /matchtrips`,
+    time: `${(new Date().getTime() - t0) / 1000}s`,
+    output: output
+  });
+});
+
+// DEVELOPMENT ROUTES
 app.get('/see/:query', async(req, res, next) => {
   // view the data structures :query = 'all', 'one', 'length'
   const t0 = new Date().getTime()
@@ -42,49 +53,21 @@ app.get('/see/:query', async(req, res, next) => {
     output: output
   });
 });
-app.get('/wipe', async(req, res, next) => {
-  // wipe all data structures
+app.get('/wipequeues', async(req, res, next) => {
+  // reset available_drivers and available_passengers
   const t0 = new Date().getTime()
-  const output = await dbHelpers.wipe();
+  const output = await dbHelpers.wipeQueues();
   res.status(200).json({
-    message: `Successful GET -> /wipe`,
+    message: 'Successful GET -> /wipequeues',
     time: `${(new Date().getTime() - t0) / 1000}s`,
     output: output
   });
 });
-app.get('/simulate', async(req, res, next) => {
-  // real scenario: all 3 below functions happening at the same time.
-  // 1. passengers constantly getting added
-  // 2. drivers constantly getting added
-  // 3. matching is performed repeatedly in the background
-  const t0 = new Date().getTime();
-  try {
-    const passengerAddRepeat = 5;
-    const driverAddRepeat = 5;
-    const matchRepeat = 30;
-    for (let i = 0; i < passengerAddRepeat; i++) {
-      await dbHelpers.addUsers('passengers', 20000);
-    }
-    for (let i = 0; i < driverAddRepeat; i++) {
-      await dbHelpers.addUsers('drivers', 20000);
-    }
-    for (let i = 0; i < matchRepeat; i++) {
-      await dbHelpers.matchtrips(5000);
-    }
-    res.status(200).json({
-      message: `Successful GET -> /simulate`,
-      time: `${(new Date().getTime() - t0) / 1000}s`,
-      output: null
-    });
-  } catch (e) {
-    next(e);
-  }
-});
 app.get('/million', async(req, res, next) => {
   // add one million trips to trips database
   const t0 = new Date().getTime()
-  for (let i = 0; i < 200; i++) {
-    await dbHelpers.addTenMillionTrips(i);
+  for (let i = 0; i < 10; i++) {
+    await dbHelpers.addOneMillionTrips(i);
   }
   res.status(200).json({
     message: `Successful GET -> /million`,
