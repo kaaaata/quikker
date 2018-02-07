@@ -55,11 +55,10 @@ app.get('/see/:query', async(req, res, next) => {
 app.get('/wipequeues', async(req, res, next) => {
   // reset available_drivers and available_passengers
   const t0 = new Date().getTime()
-  const output = await dbHelpers.wipeQueues();
+  await dbHelpers.wipeQueues();
   res.status(200).json({
     message: 'Successful GET -> /wipequeues',
     time: `${(new Date().getTime() - t0) / 1000}s`,
-    output: output
   });
 });
 app.get('/million', async(req, res, next) => {
@@ -73,3 +72,5 @@ app.get('/million', async(req, res, next) => {
     time: `${(new Date().getTime() - t0) / 1000}s`,
   });
 });
+
+module.exports = app;
